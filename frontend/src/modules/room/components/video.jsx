@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 
-export const Video = forwardRef((ref, handleToggleCamera)=> {
+export const Video = forwardRef(({ handleToggleCamera }, ref) => {
     
     return (
         <div className="mb-6">
@@ -13,10 +13,11 @@ export const Video = forwardRef((ref, handleToggleCamera)=> {
             <button 
                 id="toggleCamera"
                 className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                onClick={handleToggleCamera.toggleCamera}
+                // 2. Вызываем саму функцию, которую передали в props
+                onClick={handleToggleCamera}
                 >
                 Enable Camera
             </button>
         </div>
     )
-}) 
+});

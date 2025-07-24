@@ -75,40 +75,63 @@ export const RoomModule = () => {
         };
     
     //Обработчик входящих сообщений от WebSocket
-    ws.onmessage = async (evt) => {
-      try {
-        const msg = JSON.parse(evt.data);
-        if (!msg) {
-          logMessage('Получено пустое сообщение');
-          return;
+// Обработчик входящих сообщений от WebSocket
+ws.onmessage = async (evt) => {
+  // Добавляем эту проверку в самое начало!
+  const pc = pcRef.current;
+  if (!pc || pc.signalingState === 'closed') {
+    logMessage('Соединение уже закрыто, игнорируем входящее сообщение.');
+    return;
+  }
+
+  try {
+    const msg = JSON.parse(evt.data);
+    if (!msg) {
+      logMessage('Получено пустое сообщение');
+      return;
+    }
+
+    switch (msg.event) {
+      // Получен 'offer' от другого пира
+      case 'offer': {
+        logMessage('Получен Offer');
+        const offer = JSON.parse(msg.data);
+        
+        // Добавляем проверки состояния перед асинхронными операциями
+        if (pc.signalingState !== 'stable' && pc.signalingState !== 'have-local-offer') {
+            logMessage(`Неверное состояние для получения offer: ${pc.signalingState}`);
+            return;
         }
 
-        switch (msg.event) {
-          //Получен 'offer' от другого пира
-          case 'offer': {
-            logMessage('Получен Offer');
-            const offer = JSON.parse(msg.data);
-            await pc.setRemoteDescription(new RTCSessionDescription(offer));
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        
+        // Проверяем, что WebSocket все еще открыт перед отправкой
+        if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ event: 'answer', data: JSON.stringify(answer) }));
             logMessage('Отправлен Answer');
-            break;
-          }
-          //Получен 'candidate' от другого пира
-          case 'candidate': {
-            logMessage('Получен ICE-кандидат');
-            const candidate = JSON.parse(msg.data);
-            await pc.addIceCandidate(new RTCIceCandidate(candidate));
-            break;
-          }
-          default:
-            logMessage('Неизвестное событие: ' + msg.event);
         }
-      } catch (e) {
-        logMessage('Ошибка обработки сообщения: ' + e);
+        break;
       }
-    };
+      // Получен 'candidate' от другого пира
+      case 'candidate': {
+        logMessage('Получен ICE-кандидат');
+        const candidate = JSON.parse(msg.data);
+        // Здесь проверка уже сработает благодаря блоку в начале
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        break;
+      }
+      default:
+        logMessage('Неизвестное событие: ' + msg.event);
+    }
+  } catch (e) {
+    // Добавим проверку и сюда, чтобы не логировать ошибки для закрытых соединений
+    if (pc.signalingState !== 'closed') {
+        logMessage('Ошибка обработки сообщения: ' + e);
+    }
+  }
+};
   }, [logMessage]); 
 
   useEffect(() => {
