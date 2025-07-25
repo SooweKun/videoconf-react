@@ -1,6 +1,4 @@
-import { forwardRef } from "react";
-
-export const Logs = forwardRef(({logs}) => {
+export const Logs = ({logs}) => {
     return (
         <div>
             <h3 className="text-lg font-semibold text-gray-700 mb-2">Logs</h3>
@@ -11,4 +9,4 @@ export const Logs = forwardRef(({logs}) => {
             </div>
         </div>
     )
-}) 
+}
