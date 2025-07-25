@@ -8,11 +8,11 @@ const wsUrl = `ws://127.0.0.1:6069/api/websocket`;
 export const RoomModule = () => {
   const [logs, setLogs] = useState([]);
   const [stream, setStream] = useState(null);
-  const [remoteStream, setRemoteStream] = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null); 
 
   const socketRef = useRef(null);
   const localVideoRef = useRef(null);
-  const pc = useRef(null); // PeerConnection
+  const pc = useRef(null); 
 
   const logMessage = (message) => {
     console.log(message);
@@ -24,7 +24,7 @@ export const RoomModule = () => {
     socketRef.current = socket;
 
     socket.onopen = () => {
-      logMessage("WebSocket: Соединение установлено");
+      logMessage("WebSocket: Соединение установлено. Ожидание звонка от сервера...");
     };
 
     socket.onmessage = async (e) => {
@@ -34,40 +34,39 @@ export const RoomModule = () => {
       } catch (err) {
         return logMessage(`Ошибка парсинга JSON: ${err}`);
       }
-
+      
       if (!msg || !msg.event) {
         return logMessage("Получено некорректное сообщение");
       }
       
       switch (msg.event) {
         case 'offer':
-          logMessage("Получен 'offer'");
-          handleOffer(msg.data);
+          logMessage("Получен 'offer' от сервера.");
+          handleOfferFromServer(msg.data); 
           break;
-        case 'answer':
-          logMessage("Получен 'answer'");
-          handleAnswer(msg.data);
-          break;
+
         case 'candidate':
           handleNewICECandidate(msg.data);
           break;
+
         default:
-          logMessage(`Неизвестное событие: ${msg.event}`);
+          logMessage(`Неизвестное событие от сервера: ${msg.event}`);
       }
     };
 
     socket.onclose = () => logMessage("WebSocket: Соединение закрыто");
-    socket.onerror = (error) => logMessage(`WebSocket: Ошибка - ${error}`);
+    socket.onerror = (error) => logMessage(`WebSocket: Ошибка - ${error.message || 'Неизвестная ошибка'}`);
 
     return () => {
-      console.log("Закрываем WebSocket соединение");
+      if (socket) socket.close();
+      if (pc.current) pc.current.close();
     };
-  }, []);
+  }, []); 
 
   const mediaGet = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      logMessage("Медиа-поток получен");
+      logMessage("Камера и микрофон включены");
       setStream(mediaStream);
     } catch (err) {
       logMessage(`Ошибка получения медиа: ${err}`);
@@ -78,14 +77,7 @@ export const RoomModule = () => {
     if (stream && localVideoRef.current) {
       localVideoRef.current.srcObject = stream;
     }
-    
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-    };
   }, [stream]);
-
 
   const stunServer = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
@@ -94,12 +86,18 @@ export const RoomModule = () => {
   const sendMessage = (message) => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       socketRef.current.send(JSON.stringify(message));
+    } else {
+      logMessage("Ошибка отправки: WebSocket не готов.");
     }
   };
 
   const createPeerConnection = () => {
-    if (pc.current) pc.current.close();
+    if (pc.current) {
+      logMessage("Закрываем старое PeerConnection.");
+      pc.current.close();
+    }
     
+    logMessage("Создаем новое PeerConnection.");
     const peerConnection = new RTCPeerConnection(stunServer);
     
     peerConnection.onicecandidate = (e) => {
@@ -109,7 +107,7 @@ export const RoomModule = () => {
     };
 
     peerConnection.ontrack = (event) => {
-      logMessage("Получен удаленный трек!");
+      logMessage("Получен удаленный трек от сервера!");
       setRemoteStream(event.streams[0]);
     };
 
@@ -117,66 +115,53 @@ export const RoomModule = () => {
       stream.getTracks().forEach(track => {
         peerConnection.addTrack(track, stream);
       });
-      logMessage("Локальные треки добавлены в PeerConnection");
+      logMessage("Локальные треки добавлены в PeerConnection.");
     }
 
     pc.current = peerConnection;
   };
-  
-  const handleCall = async () => {
-    if (!stream) return alert("Сначала включите камеру!");
-    
-    logMessage("Инициируем звонок...");
-    createPeerConnection();
-    
-    const offer = await pc.current.createOffer();
-    await pc.current.setLocalDescription(offer);
-    
-    logMessage("Offer создан, отправляем...");
-    sendMessage({ event: 'offer', data: JSON.stringify(offer) });
-  };
 
-  const handleOffer = async (offerData) => {
+  const handleOfferFromServer = async (offerData) => {
+    if (!stream) {
+      logMessage("Получен offer, но камера выключена. Включаем...");
+      await mediaGet();
+    }
+    
+    createPeerConnection();
+
     try {
       const offer = JSON.parse(offerData);
-      createPeerConnection();
       await pc.current.setRemoteDescription(new RTCSessionDescription(offer));
       
       const answer = await pc.current.createAnswer();
       await pc.current.setLocalDescription(answer);
-      
-      logMessage("Answer создан, отправляем...");
+
+      logMessage("Answer создан, отправляем серверу...");
       sendMessage({ event: 'answer', data: JSON.stringify(answer) });
     } catch (e) {
-      logMessage(`Ошибка обработки offer: ${e}`);
-    }
-  };
-
-  const handleAnswer = async (answerData) => {
-    try {
-      const answer = JSON.parse(answerData);
-      await pc.current.setRemoteDescription(new RTCSessionDescription(answer));
-      logMessage("Соединение установлено!");
-    } catch (e) {
-      logMessage(`Ошибка обработки answer: ${e}`);
+      logMessage(`Критическая ошибка при обработке offer: ${e}`);
     }
   };
   
-  // ОБА ПИРА: Добавить ICE-кандидата
+  // Обработчик для кандидатов от сервера
   const handleNewICECandidate = async (candidateData) => {
-    try {
-      const candidate = JSON.parse(candidateData);
-      await pc.current.addIceCandidate(new RTCIceCandidate(candidate));
-    } catch  {
-      console.log("Ошибка добавления ICE-кандидата");
+    if (pc.current && pc.current.remoteDescription) {
+      try {
+        const candidate = JSON.parse(candidateData);
+        await pc.current.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (e) {
+        logMessage(`Ошибка добавления ICE-кандидата: ${e}`);
+      }
+    } else {
+      logMessage("Ошибка: получен кандидат до установки remoteDescription. Кандидат проигнорирован.");
     }
   };
 
   return (
     <div className="container mx-auto p-4 max-w-4xl">
-      <h1 className="text-2xl font-bold text-gray-800 mb-4">WebRTC Video Chat</h1>
+      <h1 className="text-2xl font-bold text-gray-800 mb-4">WebRTC Трансляция</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Video mediaGet={mediaGet} ref={localVideoRef} stream={stream} Call={handleCall}/>
+        <Video mediaGet={mediaGet} ref={localVideoRef} stream={stream} />
         <RemoteVideo stream={remoteStream}/>
       </div>
       <Logs logs={logs}/>
