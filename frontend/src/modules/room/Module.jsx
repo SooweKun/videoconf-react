@@ -104,7 +104,6 @@ export const RoomModule = () => {
     
     peerConnection.onicecandidate = (e) => {
       if (e.candidate) {
-        // Отправляем кандидата в формате { event: 'candidate', data: '...' }
         sendMessage({ event: 'candidate', data: JSON.stringify(e.candidate) });
       }
     };
@@ -124,7 +123,6 @@ export const RoomModule = () => {
     pc.current = peerConnection;
   };
   
-  // ИНИЦИАТОР: Начать звонок
   const handleCall = async () => {
     if (!stream) return alert("Сначала включите камеру!");
     
@@ -138,7 +136,6 @@ export const RoomModule = () => {
     sendMessage({ event: 'offer', data: JSON.stringify(offer) });
   };
 
-  // ОТВЕЧАЮЩИЙ: Обработать входящий offer
   const handleOffer = async (offerData) => {
     try {
       const offer = JSON.parse(offerData);
@@ -155,7 +152,6 @@ export const RoomModule = () => {
     }
   };
 
-  // ИНИЦИАТОР: Обработать входящий answer
   const handleAnswer = async (answerData) => {
     try {
       const answer = JSON.parse(answerData);
@@ -180,7 +176,6 @@ export const RoomModule = () => {
     <div className="container mx-auto p-4 max-w-4xl">
       <h1 className="text-2xl font-bold text-gray-800 mb-4">WebRTC Video Chat</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Передаем handleCall в компонент Video, чтобы повесить на кнопку */}
         <Video mediaGet={mediaGet} ref={localVideoRef} stream={stream} Call={handleCall}/>
         <RemoteVideo stream={remoteStream}/>
       </div>
