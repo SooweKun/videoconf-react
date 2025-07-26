@@ -48,7 +48,7 @@ func InitApp() *Core {
 
 func (app *Core) Start() {
 	app.logger.Successf("HTTPS server listening on %s", app.config.Address())
-	if err := app.http_server.ListenTLS("0.0.0.0:6069", "./tmp/cert/cert.pem", "./tmp/cert/key.pem"); err != nil {
+	if err := app.http_server.ListenTLS("192.168.101.33:6069", "./tmp/cert.pem", "./tmp/key.pem"); err != nil {
   		app.logger.Errorf("Failed to start HTTPS server: %v", err)
  	}
 }

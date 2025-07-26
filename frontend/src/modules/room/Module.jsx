@@ -30,18 +30,19 @@ export const RoomModule = () => {
 
       pc.ontrack = (event) => {
         if (event.track.kind === 'audio') return;
-        
+
         const video = document.createElement('video');
         video.srcObject = event.streams[0];
         video.autoplay = true;
         video.controls = true;
         video.className = 'w-full rounded-lg';
+
         if (remoteVideosRef.current) {
           remoteVideosRef.current.appendChild(video);
         }
-        
+
         addLog(`Received remote ${event.track.kind} track`);
-        
+
         event.track.onmute = () => video.play();
         event.streams[0].onremovetrack = () => {
           if (video.parentNode) {
@@ -51,28 +52,28 @@ export const RoomModule = () => {
         };
       };
 
-      const ws = new WebSocket('ws://127.0.0.1:6069/api/websocket');
-      
+      const ws = new WebSocket('wss://192.168.101.33:6069/api/websocket');
+
       ws.onopen = () => {
         addLog('WebSocket opened');
         setWsConnected(true);
       };
-      
+
       ws.onclose = () => {
         addLog('WebSocket closed');
         setWsConnected(false);
       };
-      
+
       ws.onerror = (evt) => {
         addLog('WebSocket error: ' + evt);
         setWsConnected(false);
       };
 
       pc.onicecandidate = (e) => {
-        if (e.candidate && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-          wsRef.current.send(JSON.stringify({ event: 'candidate', data: JSON.stringify(e.candidate) }));
+        if (e.candidate && wsConnected) {
+          ws.send(JSON.stringify({ event: 'candidate', data: JSON.stringify(e.candidate) }));
           addLog('Sent ICE candidate');
-      }
+        }
       };
 
       ws.onmessage = async (evt) => {
@@ -138,23 +139,23 @@ export const RoomModule = () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       streamRef.current = stream;
-      
+
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
         localVideoRef.current.classList.remove('hidden');
       }
-      
+
       if (localVideoPlaceholderRef.current) {
         localVideoPlaceholderRef.current.classList.add('hidden');
       }
-      
+
       if (pcRef.current) {
         stream.getTracks().forEach((track) => {
           pcRef.current.addTrack(track, stream);
           addLog(`Added ${track.kind} track`);
         });
       }
-      
+
       setIsCameraOn(true);
       addLog('Camera started');
     } catch (e) {
@@ -174,25 +175,25 @@ export const RoomModule = () => {
         }
       });
       streamRef.current = null;
-      
+
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = null;
         localVideoRef.current.classList.add('hidden');
       }
-      
+
       if (localVideoPlaceholderRef.current) {
         localVideoPlaceholderRef.current.classList.remove('hidden');
       }
-      
+
       addLog('Camera stopped');
     }
-    
+
     setIsCameraOn(false);
   };
 
   useEffect(() => {
     initializeWebRTC();
-    
+
     return () => {
       if (wsRef.current) wsRef.current.close();
       if (pcRef.current) pcRef.current.close();
