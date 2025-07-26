@@ -8,9 +8,9 @@ export const RoomModule = () => {
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [logs, setLogs] = useState([]);
   const [wsConnected, setWsConnected] = useState(false);
-  const [remoteStreams, setRemoteStreams] = useState([])
   
   const localVideoRef = useRef(null);
+  const remoteVideosRef = useRef(null);
   const localVideoPlaceholderRef = useRef(null);
   
   const pcRef = useRef(null);
@@ -29,24 +29,26 @@ export const RoomModule = () => {
       });
 
       pc.ontrack = (event) => {
-
         if (event.track.kind === 'audio') return;
-        addLog(`Received remote ${event.track.kind} track`);
-        const remoteStream = event.streams[0];
-
-        setRemoteStreams(prevStreams => {
-          if (prevStreams.some(s => s.id === remoteStream.id)) {
-              return prevStreams; 
-          }
-          return [...prevStreams, remoteStream];
-        });
         
-        remoteStream.onremovetrack = () => {
-          addLog('Remote track removed');
-          setRemoteStreams(prevStreams => 
-          prevStreams.filter(stream => stream.id !== remoteStream.id));
+        const video = document.createElement('video');
+        video.srcObject = event.streams[0];
+        video.autoplay = true;
+        video.controls = true;
+        video.className = 'w-full rounded-lg';
+        if (remoteVideosRef.current) {
+          remoteVideosRef.current.appendChild(video);
+        }
+        
+        addLog(`Received remote ${event.track.kind} track`);
+        
+        event.track.onmute = () => video.play();
+        event.streams[0].onremovetrack = () => {
+          if (video.parentNode) {
+            video.parentNode.removeChild(video);
+            addLog('Remote track removed');
+          }
         };
-
       };
 
       const ws = new WebSocket('ws://127.0.0.1:6069/api/websocket');
@@ -70,7 +72,7 @@ export const RoomModule = () => {
         if (e.candidate && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
           wsRef.current.send(JSON.stringify({ event: 'candidate', data: JSON.stringify(e.candidate) }));
           addLog('Sent ICE candidate');
-        }
+      }
       };
 
       ws.onmessage = async (evt) => {
@@ -203,12 +205,7 @@ export const RoomModule = () => {
       <div className="container mx-auto p-4 max-w-4xl">
         <h1 className="text-2xl font-bold text-gray-800 mb-4">WebRTC Video Chat</h1>
         <Video isCameraOn={isCameraOn} toggleCamera={toggleCamera} ref={localVideoRef} wsConnected={wsConnected}/>
-        {remoteStreams.map(stream => (
-          <RemoteVideo
-            key={stream.id}
-            stream={stream}
-          />
-        ))}
+        <RemoteVideo ref={remoteVideosRef}/>
         <Logs logs={logs}/>
       </div>
     </div>
