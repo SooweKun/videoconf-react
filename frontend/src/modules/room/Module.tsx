@@ -5,6 +5,8 @@ import { RemoteVideo } from './components/remote-video';
 import { Logs } from './components/logs';
 import { Rooms } from './components/rooms';
 
+
+
 export const RoomModule = () => {
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [logs, setLogs] = useState<String[]>([]);
@@ -14,6 +16,7 @@ export const RoomModule = () => {
   const [remoteStreams, setRemoteStreams] = useState<MediaStream[]>([]);
   
   const localVideoRef = useRef<HTMLVideoElement>(null);
+  // const remoteVideosRef = useRef(null);
   const localVideoPlaceholderRef = useRef<HTMLVideoElement>(null);
   
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -136,21 +139,16 @@ export const RoomModule = () => {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       streamRef.current = stream;
 
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-        localVideoRef.current.classList.remove('hidden');
-      }
-
-      if (localVideoPlaceholderRef.current) {
-        localVideoPlaceholderRef.current.classList.add('hidden');
-      }
-
       if (pcRef.current) {
         stream.getTracks().forEach((track) => {
           pcRef.current && 
           pcRef.current.addTrack(track, stream);
           addLog(`Added ${track.kind} track`);
         });
+      }
+
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
       }
 
       setIsCameraOn(true);
@@ -173,13 +171,9 @@ export const RoomModule = () => {
       });
       streamRef.current = null;
 
+
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = null;
-        localVideoRef.current.classList.add('hidden');
-      }
-
-      if (localVideoPlaceholderRef.current) {
-        localVideoPlaceholderRef.current.classList.remove('hidden');
       }
 
       addLog('Camera stopped');

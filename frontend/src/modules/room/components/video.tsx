@@ -1,13 +1,12 @@
-import { FC, forwardRef } from "react";
+import { forwardRef } from "react";
 
 interface Props {
     toggleCamera: () => void;
     isCameraOn: boolean;
     wsConnected: boolean;
-    ref:React.RefObject<HTMLVideoElement | null>;
 }
 
-export const Video: FC<Props> = forwardRef(({ toggleCamera, isCameraOn, wsConnected}, ref) => {
+export const Video = forwardRef<HTMLVideoElement, Props>(({ toggleCamera, isCameraOn, wsConnected}, ref) => {
 
     const buttonClasses = `mt-2 px-4 py-2 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 ${
     isCameraOn 
@@ -18,12 +17,14 @@ export const Video: FC<Props> = forwardRef(({ toggleCamera, isCameraOn, wsConnec
      return (
         <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-700 mb-2">Local Video</h3>
-            <div className="relative bg-gray-500 rounded-lg overflow-hidden w-[320px] h-[240px]">
-                <video 
+            <div className=" rounded-lg  w-full h-[240px]">
+                <video
                     ref={ref}
-                    autoPlay 
-                    muted 
-                    className="w-full hidden"
+                    width="320"
+                    height="240"
+                    autoPlay
+                    muted
+                    className="w-full h-full"
                 />
             </div>
             <button
