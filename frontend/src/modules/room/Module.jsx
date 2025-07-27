@@ -3,11 +3,14 @@ import { useEffect, useRef, useState } from 'react';
 import { Video } from './components/video';
 import { RemoteVideo } from './components/remote-video';
 import { Logs } from './components/logs';
+import { Rooms } from './components/rooms';
 
 export const RoomModule = () => {
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [logs, setLogs] = useState([]);
   const [wsConnected, setWsConnected] = useState(false);
+  const [userId, setUserId] = useState('');
+  const [selectedRoomId, setSelectedRoomId] = useState(null);
   
   const localVideoRef = useRef(null);
   const remoteVideosRef = useRef(null);
@@ -16,6 +19,10 @@ export const RoomModule = () => {
   const pcRef = useRef(null);
   const streamRef = useRef(null);
   const wsRef = useRef(null);
+
+      const handleRoomSelect = (roomId) => {
+        setSelectedRoomId(roomId); 
+    };
 
   const addLog = (message) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -52,7 +59,7 @@ export const RoomModule = () => {
         };
       };
 
-      const ws = new WebSocket('wss://192.168.101.33:6069/api/websocket');
+      const ws = new WebSocket(`wss://192.168.1.179:6069/api/websocket?userID=${userId}&hubID=${selectedRoomId}`);
 
       ws.onopen = () => {
         addLog('WebSocket opened');
@@ -202,11 +209,14 @@ export const RoomModule = () => {
   }, []);
 
   return (
-    <div className="bg-gray-100 font-sans">
+    <div className="bg-gray-100 font-sans h-screen">
       <div className="container mx-auto p-4 max-w-4xl">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">WebRTC Video Chat</h1>
-        <Video isCameraOn={isCameraOn} toggleCamera={toggleCamera} ref={localVideoRef} wsConnected={wsConnected}/>
-        <RemoteVideo ref={remoteVideosRef}/>
+        <h1 className="text-2xl font-bold text-gray-800">WebRTC Video Chat</h1>
+        <Rooms handleRoomSelect={handleRoomSelect} setUserId={setUserId}/>
+        <div className='flex justify-between mt-4'>
+          <Video isCameraOn={isCameraOn} toggleCamera={toggleCamera} ref={localVideoRef} wsConnected={wsConnected}/>
+          <RemoteVideo ref={remoteVideosRef}/>
+        </div>
         <Logs logs={logs}/>
       </div>
     </div>

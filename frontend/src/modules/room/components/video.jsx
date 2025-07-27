@@ -11,20 +11,13 @@ export const Video = forwardRef(({ toggleCamera, isCameraOn, wsConnected}, ref) 
      return (
         <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-700 mb-2">Local Video</h3>
-            <div className="relative bg-gray-200 rounded-lg overflow-hidden">
+            <div className="relative bg-gray-500 rounded-lg overflow-hidden w-[320px] h-[240px]">
                 <video 
                     ref={ref}
-                    width="320" 
-                    height="240" 
                     autoPlay 
                     muted 
                     className="w-full hidden"
                 />
-                <div  
-                    className="absolute inset-0 flex items-center justify-center bg-gray-300 text-gray-600"
-                >
-                    Camera is off
-                </div>
             </div>
             <button
                 onClick={toggleCamera}
