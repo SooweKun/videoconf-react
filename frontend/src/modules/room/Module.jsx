@@ -199,8 +199,8 @@ export const RoomModule = () => {
   };
 
   useEffect(() => {
-    if (!userId || !selectedRoomId) {
-      return;
+     if (!userId || !selectedRoomId) {
+      return; 
     }
 
     initializeWebRTC();
@@ -210,7 +210,7 @@ export const RoomModule = () => {
       if (pcRef.current) pcRef.current.close();
       stopCamera();
     };
-  }, []);
+  }, [userId, selectedRoomId]);
 
   return (
     <div className="bg-gray-100 font-sans h-screen">
