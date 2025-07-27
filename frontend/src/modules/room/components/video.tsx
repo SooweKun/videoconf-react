@@ -1,6 +1,13 @@
-import { forwardRef } from "react";
+import { FC, forwardRef } from "react";
 
-export const Video = forwardRef(({ toggleCamera, isCameraOn, wsConnected}, ref) => {
+interface Props {
+    toggleCamera: () => void;
+    isCameraOn: boolean;
+    wsConnected: boolean;
+    ref:React.RefObject<HTMLVideoElement | null>;
+}
+
+export const Video: FC<Props> = forwardRef(({ toggleCamera, isCameraOn, wsConnected}, ref) => {
 
     const buttonClasses = `mt-2 px-4 py-2 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 ${
     isCameraOn 

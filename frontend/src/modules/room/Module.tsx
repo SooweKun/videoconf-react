@@ -7,18 +7,18 @@ import { Rooms } from './components/rooms';
 
 export const RoomModule = () => {
   const [isCameraOn, setIsCameraOn] = useState(false);
-  const [logs, setLogs] = useState([]);
+  const [logs, setLogs] = useState<String[]>([]);
   const [wsConnected, setWsConnected] = useState(false);
   const [userId, setUserId] = useState('');
   const [selectedRoomId, setSelectedRoomId] = useState(null);
+  const [remoteStreams, setRemoteStreams] = useState<MediaStream[]>([]);
   
-  const localVideoRef = useRef(null);
-  const remoteVideosRef = useRef(null);
-  const localVideoPlaceholderRef = useRef(null);
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const localVideoPlaceholderRef = useRef<HTMLVideoElement>(null);
   
-  const pcRef = useRef(null);
-  const streamRef = useRef(null);
-  const wsRef = useRef(null);
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
 
       const handleRoomSelect = (roomId) => {
         setSelectedRoomId(roomId); 
@@ -37,29 +37,12 @@ export const RoomModule = () => {
 
       pc.ontrack = (event) => {
         if (event.track.kind === 'audio') return;
-
-        const video = document.createElement('video');
-        video.srcObject = event.streams[0];
-        video.autoplay = true;
-        video.controls = true;
-        video.className = 'w-full rounded-lg';
-
-        if (remoteVideosRef.current) {
-          remoteVideosRef.current.appendChild(video);
-        }
-
+  
+        setRemoteStreams(prev => [...prev, event.streams[0]]);
         addLog(`Received remote ${event.track.kind} track`);
-
-        event.track.onmute = () => video.play();
-        event.streams[0].onremovetrack = () => {
-          if (video.parentNode) {
-            video.parentNode.removeChild(video);
-            addLog('Remote track removed');
-          }
-        };
       };
 
-      const ws = new WebSocket(`wss://192.168.1.179:6069/api/websocket?userID=${userId}&hubID=${selectedRoomId}`);
+      const ws = new WebSocket(`wss://192.168.101.33:6069/api/websocket?userID=${userId}&hubID=${selectedRoomId}`);
 
       ws.onopen = () => {
         addLog('WebSocket opened');
@@ -115,6 +98,12 @@ export const RoomModule = () => {
               addLog('Added ICE candidate');
               break;
             }
+            case 'answer': {
+              const answer = JSON.parse(msg.data);
+              await pc.setRemoteDescription(new RTCSessionDescription(answer));
+              addLog('Set remote description from answer');
+              break;
+            }
             default:
               addLog('Unknown event: ' + msg.event);
           }
@@ -158,6 +147,7 @@ export const RoomModule = () => {
 
       if (pcRef.current) {
         stream.getTracks().forEach((track) => {
+          pcRef.current && 
           pcRef.current.addTrack(track, stream);
           addLog(`Added ${track.kind} track`);
         });
@@ -219,7 +209,7 @@ export const RoomModule = () => {
         <Rooms handleRoomSelect={handleRoomSelect} setUserId={setUserId}/>
         <div className='flex justify-between mt-4'>
           <Video isCameraOn={isCameraOn} toggleCamera={toggleCamera} ref={localVideoRef} wsConnected={wsConnected}/>
-          <RemoteVideo ref={remoteVideosRef}/>
+          <RemoteVideo remoteStreams={remoteStreams}/>
         </div>
         <Logs logs={logs}/>
       </div>

@@ -1,7 +1,6 @@
 const Room = [
     {roomid: 1, name: 'Room 1'},
     {roomid: 2, name: 'Room 2'},
-    {roomid: 3, name: 'Room 3'},
 ]
 
 export const Rooms = ({setUserId, handleRoomSelect}) => {
