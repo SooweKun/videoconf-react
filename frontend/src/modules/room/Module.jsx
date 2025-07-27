@@ -199,6 +199,10 @@ export const RoomModule = () => {
   };
 
   useEffect(() => {
+    if (!userId || !selectedRoomId) {
+      return;
+    }
+
     initializeWebRTC();
 
     return () => {
